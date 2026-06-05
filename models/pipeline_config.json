@@ -1,0 +1,12 @@
+{
+  "churn_threshold": 0.19068136272545091,
+  "crosssell_threshold": 0.33993987975951906,
+  "churn_capacity_pct": 0.25,
+  "cs_capacity_pct": 0.3,
+  "clv_multiplier": 0.5,
+  "base_value_saved": 100,
+  "revenue_per_accept": 200,
+  "cost_contact": 5,
+  "risk_band_edges": [0.0, 0.0943, 0.157, 1.0],
+  "crosssell_band_edges": [0.0, 0.2418, 0.3268, 1.0]
+}
