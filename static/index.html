@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retail Banking Prediction Dashboard</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- ChartJS -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="app-logo">
+                    <i data-lucide="shield-alert" class="logo-icon"></i>
+                    <span>Banking <span class="logo-sub">ML</span></span>
+                </div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <button class="nav-item active" data-tab="dashboard">
+                    <i data-lucide="layout-dashboard"></i>
+                    <span>Dashboard</span>
+                </button>
+                <button class="nav-item" data-tab="priority">
+                    <i data-lucide="list-ordered"></i>
+                    <span>Priority Lists</span>
+                </button>
+                <button class="nav-item" data-tab="sandbox">
+                    <i data-lucide="sliders"></i>
+                    <span>What-If Sandbox</span>
+                </button>
+                <button class="nav-item" data-tab="batch">
+                    <i data-lucide="upload-cloud"></i>
+                    <span>Batch Scoring</span>
+                </button>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <div class="status-card">
+                    <div class="status-indicator">
+                        <span class="pulse-dot"></span>
+                        <span class="status-label">Pipeline Active</span>
+                    </div>
+                    <div class="status-details">
+                        <p><strong>Model:</strong> Calibrated LR</p>
+                        <p><strong>Churn Thresh:</strong> <span id="status-churn-t">--</span></p>
+                        <p><strong>Cross-Sell Thresh:</strong> <span id="status-cs-t">--</span></p>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <header class="main-header">
+                <div class="header-title">
+                    <h1 id="page-title">Predictive Business Dashboard</h1>
+                    <p class="header-subtitle" id="page-subtitle">Overview of churn risks and cross-sell optimization</p>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-secondary" id="refresh-db-btn">
+                        <i data-lucide="refresh-cw"></i>
+                        <span>Reload Data</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Top KPI Cards Grid -->
+            <section class="kpi-grid">
+                <!-- KPI 1 -->
+                <div class="kpi-card">
+                    <div class="kpi-header">
+                        <span class="kpi-title">Total Customers</span>
+                        <div class="kpi-icon-wrapper blue">
+                            <i data-lucide="users"></i>
+                        </div>
+                    </div>
+                    <div class="kpi-value" id="kpi-total-customers">---</div>
+                    <div class="kpi-subtext">Active scored database records</div>
+                </div>
+                
+                <!-- KPI 2 -->
+                <div class="kpi-card">
+                    <div class="kpi-header">
+                        <span class="kpi-title">Avg Churn Probability</span>
+                        <div class="kpi-icon-wrapper red">
+                            <i data-lucide="trending-up"></i>
+                        </div>
+                    </div>
+                    <div class="kpi-value" id="kpi-churn-rate">---</div>
+                    <div class="kpi-subtext">Actual: <span id="kpi-actual-churn">--%</span> | Targeted: <span id="kpi-targeted-churn">--%</span></div>
+                </div>
+                
+                <!-- KPI 3 -->
+                <div class="kpi-card">
+                    <div class="kpi-header">
+                        <span class="kpi-title">Avg Cross-Sell Probability</span>
+                        <div class="kpi-icon-wrapper green">
+                            <i data-lucide="check-square"></i>
+                        </div>
+                    </div>
+                    <div class="kpi-value" id="kpi-crosssell-rate">---</div>
+                    <div class="kpi-subtext">Actual: <span id="kpi-actual-cs">--%</span> | Targeted: <span id="kpi-targeted-cs">--%</span></div>
+                </div>
+                
+                <!-- KPI 4 -->
+                <div class="kpi-card glow-emerald">
+                    <div class="kpi-header">
+                        <span class="kpi-title">Net Campaign Value</span>
+                        <div class="kpi-icon-wrapper gold">
+                            <i data-lucide="dollar-sign"></i>
+                        </div>
+                    </div>
+                    <div class="kpi-value text-emerald" id="kpi-net-profit">$---</div>
+                    <div class="kpi-subtext">Retention + Cross-sell ROI</div>
+                </div>
+            </section>
+
+            <!-- Tab Content Screens -->
+            <div class="tab-container">
+                
+                <!-- Tab 1: Dashboard -->
+                <div class="tab-pane active" id="tab-dashboard">
+                    <div class="dashboard-layout">
+                        <!-- Left Panel: Financial Optimization -->
+                        <div class="card glass-card financial-panel">
+                            <div class="card-header">
+                                <h3><i data-lucide="settings-2"></i> Dynamic ROI Parameters</h3>
+                                <p class="card-subtitle">Adjust contact costs and values to see real-time Campaign Net Profit changes</p>
+                            </div>
+                            
+                            <div class="card-body">
+                                <div class="parameter-sliders">
+                                    <div class="slider-group">
+                                        <div class="slider-label">
+                                            <span>Contact Cost (per customer)</span>
+                                            <span class="slider-val" id="val-cost-contact">$5</span>
+                                        </div>
+                                        <input type="range" class="custom-slider" id="slider-cost-contact" min="1" max="50" value="5">
+                                    </div>
+                                    
+                                    <div class="slider-group">
+                                        <div class="slider-label">
+                                            <span>Customer Saved Value (CLV save)</span>
+                                            <span class="slider-val" id="val-base-saved">$100</span>
+                                        </div>
+                                        <input type="range" class="custom-slider" id="slider-base-saved" min="50" max="1000" step="25" value="100">
+                                    </div>
+                                    
+                                    <div class="slider-group">
+                                        <div class="slider-label">
+                                            <span>Cross-sell Product Revenue</span>
+                                            <span class="slider-val" id="val-revenue-accept">$200</span>
+                                        </div>
+                                        <input type="range" class="custom-slider" id="slider-revenue-accept" min="50" max="1000" step="25" value="200">
+                                    </div>
+                                </div>
+                                
+                                <hr class="divider">
+                                
+                                <div class="campaign-profit-summary">
+                                    <h4 class="summary-section-title" id="profit-summary-title">Campaign Net Value</h4>
+                                    
+                                    <div class="summary-row">
+                                        <span>Retention Campaign Net Profit</span>
+                                        <span class="summary-val text-cyan" id="profit-retention">$0</span>
+                                    </div>
+                                    <div class="summary-details-list">
+                                        <div class="summary-subrow">
+                                            <span>Targeted Customers</span>
+                                            <span id="detail-retention-contacts">0</span>
+                                        </div>
+                                        <div class="summary-subrow">
+                                            <span id="label-retention-revenue">Saved Revenue</span>
+                                            <span id="detail-retention-revenue">$0</span>
+                                        </div>
+                                        <div class="summary-subrow">
+                                            <span>Campaign Cost</span>
+                                            <span id="detail-retention-cost">$0</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="summary-row mt-4">
+                                        <span>Cross-Sell Campaign Net Profit</span>
+                                        <span class="summary-val text-emerald" id="profit-crosssell">$0</span>
+                                    </div>
+                                    <div class="summary-details-list">
+                                        <div class="summary-subrow">
+                                            <span>Targeted Customers</span>
+                                            <span id="detail-cs-contacts">0</span>
+                                        </div>
+                                        <div class="summary-subrow">
+                                            <span id="label-cs-revenue">Accepted Revenue</span>
+                                            <span id="detail-cs-revenue">$0</span>
+                                        </div>
+                                        <div class="summary-subrow">
+                                            <span>Campaign Cost</span>
+                                            <span id="detail-cs-cost">$0</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Right Panel: Data Visualizations -->
+                        <div class="charts-panel">
+                            <div class="charts-grid">
+                                <!-- Chart 1 -->
+                                <div class="card glass-card chart-card">
+                                    <div class="card-header">
+                                        <h3>Churn Risk Distribution</h3>
+                                    </div>
+                                    <div class="card-body chart-container">
+                                        <canvas id="chart-risk-dist"></canvas>
+                                    </div>
+                                </div>
+                                
+                                <!-- Chart 2 -->
+                                <div class="card glass-card chart-card">
+                                    <div class="card-header">
+                                        <h3>Cross-Sell Probability Bands</h3>
+                                    </div>
+                                    <div class="card-body chart-container">
+                                        <canvas id="chart-clv-breakdown"></canvas>
+                                    </div>
+                                </div>
+                                
+                                <!-- Chart 3 -->
+                                <div class="card glass-card chart-card full-width">
+                                    <div class="card-header">
+                                        <h3>Campaign Channel Effectiveness (Avg Probabilities)</h3>
+                                    </div>
+                                    <div class="card-body chart-container-large">
+                                        <canvas id="chart-channel-effectiveness"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Tab 2: Priority Lists -->
+                <div class="tab-pane" id="tab-priority">
+                    <div class="card glass-card">
+                        <div class="card-header flex-header">
+                            <div>
+                                <div class="toggle-buttons" id="priority-toggle-group">
+                                    <button class="btn btn-tab-toggle active" data-type="retention">
+                                        <i data-lucide="user-minus"></i> Retention Priority List (Top 1000 Churn Risk)
+                                    </button>
+                                    <button class="btn btn-tab-toggle" data-type="crosssell">
+                                        <i data-lucide="shopping-bag"></i> Cross-Sell Priority List (Top 1000 Acceptance)
+                                    </button>
+                                </div>
+                                <p class="card-subtitle mt-2" id="priority-list-desc">Top active customers with highest predicted churn probability</p>
+                            </div>
+                            <div class="priority-search-wrapper">
+                                <div class="search-input-container">
+                                    <i data-lucide="search" class="search-icon"></i>
+                                    <input type="text" id="priority-search" placeholder="Search Customer ID...">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card-body no-padding">
+                            <div class="table-responsive">
+                                <table class="custom-table" id="priority-table">
+                                    <thead>
+                                        <tr id="priority-table-headers">
+                                            <!-- Dynamic headers -->
+                                        </tr>
+                                    </thead>
+                                    <tbody id="priority-table-body">
+                                        <!-- Table content will be injected -->
+                                        <tr>
+                                            <td colspan="5" class="text-center py-8">Loading priority database list...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <!-- Pagination -->
+                            <div class="table-pagination">
+                                <span class="pagination-info" id="pagination-info-text">Showing 0-0 of 0 entries</span>
+                                <div class="pagination-buttons">
+                                    <button class="btn btn-icon" id="btn-prev-page" disabled><i data-lucide="chevron-left"></i></button>
+                                    <button class="btn btn-icon" id="btn-next-page" disabled><i data-lucide="chevron-right"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Tab 3: What-If Sandbox -->
+                <div class="tab-pane" id="tab-sandbox">
+                    <div class="sandbox-layout">
+                        <!-- Left Pane: Inputs form -->
+                        <div class="card glass-card sandbox-inputs-card">
+                            <div class="card-header flex-header">
+                                <div>
+                                    <h3><i data-lucide="sliders-horizontal"></i> Customer What-If Simulator</h3>
+                                    <p class="card-subtitle">Select an existing customer or manually adjust features to see simulated predictions</p>
+                                </div>
+                                <div class="customer-search-sandbox">
+                                    <input type="text" id="sandbox-customer-search" placeholder="Load Customer ID (e.g. CUST000001)...">
+                                    <button class="btn btn-primary btn-sm" id="btn-load-sandbox">Load</button>
+                                </div>
+                            </div>
+                            
+                            <div class="card-body">
+                                <form id="sandbox-form" class="sandbox-grid-form">
+                                    <!-- Customer ID (hidden / read-only) -->
+                                    <div class="form-group span-all">
+                                        <div class="loaded-customer-badge" id="loaded-customer-badge">
+                                            <span>Creating Custom Simulation Profile</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Demographic Features -->
+                                    <div class="form-section span-all">
+                                        <h4>Demographics & Segmentation</h4>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="age">Age</label>
+                                        <input type="number" id="age" name="age" value="45" min="18" max="100">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="gender">Gender</label>
+                                        <select id="gender" name="gender">
+                                            <option value="Male">Male</option>
+                                            <option value="Female">Female</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="marital_status">Marital Status</label>
+                                        <select id="marital_status" name="marital_status">
+                                            <option value="Married">Married</option>
+                                            <option value="Single">Single</option>
+                                            <option value="Divorced">Divorced</option>
+                                            <option value="Widowed">Widowed</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="education_level">Education Level</label>
+                                        <select id="education_level" name="education_level">
+                                            <option value="Bachelor">Bachelor</option>
+                                            <option value="High School">High School</option>
+                                            <option value="Master">Master</option>
+                                            <option value="PhD">PhD</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="occupation">Occupation</label>
+                                        <select id="occupation" name="occupation">
+                                            <option value="Salaried">Salaried</option>
+                                            <option value="Business Owner">Business Owner</option>
+                                            <option value="Self-Employed">Self-Employed</option>
+                                            <option value="Student">Student</option>
+                                            <option value="Retired">Retired</option>
+                                            <option value="Unemployed">Unemployed</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="city_tier">City Tier</label>
+                                        <select id="city_tier" name="city_tier">
+                                            <option value="Tier 1">Tier 1</option>
+                                            <option value="Tier 2">Tier 2</option>
+                                            <option value="Tier 3">Tier 3</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="region">Region</label>
+                                        <select id="region" name="region">
+                                            <option value="North">North</option>
+                                            <option value="South">South</option>
+                                            <option value="East">East</option>
+                                            <option value="Central">Central</option>
+                                            <option value="West">West</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="clv_score">CLV Score (0-1000)</label>
+                                        <input type="number" id="clv_score" name="clv_score" value="500" min="0" max="1000">
+                                    </div>
+                                    
+                                    <!-- Financial & Products -->
+                                    <div class="form-section span-all">
+                                        <h4>Financial Profile & Holdings</h4>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="annual_income">Annual Income ($)</label>
+                                        <input type="number" id="annual_income" name="annual_income" value="65000">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="account_type">Account Type</label>
+                                        <select id="account_type" name="account_type">
+                                            <option value="Basic">Basic</option>
+                                            <option value="Current">Current</option>
+                                            <option value="Premium">Premium</option>
+                                            <option value="Savings" selected>Savings</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="account_balance">Account Balance ($)</label>
+                                        <input type="number" id="account_balance" name="account_balance" value="15000">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="credit_score">Credit Score</label>
+                                        <input type="number" id="credit_score" name="credit_score" value="700" min="300" max="850">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="num_products_held">Products Held</label>
+                                        <input type="number" id="num_products_held" name="num_products_held" value="3" min="1" max="10">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="tenure_months">Tenure (Months)</label>
+                                        <input type="number" id="tenure_months" name="tenure_months" value="36" min="0">
+                                    </div>
+                                    
+                                    <div class="form-group span-all checkbox-grid">
+                                        <label class="checkbox-container">
+                                            <input type="checkbox" id="has_credit_card" name="has_credit_card" value="1" checked>
+                                            <span class="checkmark"></span> Has Credit Card
+                                        </label>
+                                        <label class="checkbox-container">
+                                            <input type="checkbox" id="has_personal_loan" name="has_personal_loan" value="1">
+                                            <span class="checkmark"></span> Has Personal Loan
+                                        </label>
+                                        <label class="checkbox-container">
+                                            <input type="checkbox" id="has_home_loan" name="has_home_loan" value="1">
+                                            <span class="checkmark"></span> Has Home Loan
+                                        </label>
+                                        <label class="checkbox-container">
+                                            <input type="checkbox" id="has_investment_account" name="has_investment_account" value="1">
+                                            <span class="checkmark"></span> Has Investment Account
+                                        </label>
+                                        <label class="checkbox-container">
+                                            <input type="checkbox" id="has_insurance_product" name="has_insurance_product" value="1">
+                                            <span class="checkmark"></span> Has Insurance Product
+                                        </label>
+                                    </div>
+
+                                    <!-- Transactions & Digital Engagement -->
+                                    <div class="form-section span-all">
+                                        <h4>Transactions & Digital Usage</h4>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="avg_monthly_transactions">Avg Transactions / Month</label>
+                                        <input type="number" id="avg_monthly_transactions" name="avg_monthly_transactions" value="25">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="avg_transaction_value">Avg Transaction Value ($)</label>
+                                        <input type="number" id="avg_transaction_value" name="avg_transaction_value" value="85">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="digital_channel_usage_pct">Digital Engagement (%)</label>
+                                        <input type="number" id="digital_channel_usage_pct" name="digital_channel_usage_pct" value="60" min="0" max="100">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="atm_withdrawals_monthly">ATM Withdrawals / Month</label>
+                                        <input type="number" id="atm_withdrawals_monthly" name="atm_withdrawals_monthly" value="4">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="international_txn_monthly">Int'l Transactions / Month</label>
+                                        <input type="number" id="international_txn_monthly" name="international_txn_monthly" value="1">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="branch_visits_monthly">Branch Visits / Month</label>
+                                        <input type="number" id="branch_visits_monthly" name="branch_visits_monthly" value="2">
+                                    </div>
+                                    
+                                    <!-- Campaigns & Support -->
+                                    <div class="form-section span-all">
+                                        <h4>Support Issues & Campaigns</h4>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="missed_payments_6m">Missed Payments (6m)</label>
+                                        <input type="number" id="missed_payments_6m" name="missed_payments_6m" value="0" min="0">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="customer_service_calls_6m">Service Calls (6m)</label>
+                                        <input type="number" id="customer_service_calls_6m" name="customer_service_calls_6m" value="1" min="0">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="complaint_raised">Complaint Raised?</label>
+                                        <select id="complaint_raised" name="complaint_raised">
+                                            <option value="0">No</option>
+                                            <option value="1">Yes</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="nps_score">NPS Score (0-10)</label>
+                                        <input type="number" id="nps_score" name="nps_score" value="8" min="0" max="10" step="0.1">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="campaigns_sent_12m">Campaigns Sent (12m)</label>
+                                        <input type="number" id="campaigns_sent_12m" name="campaigns_sent_12m" value="6" min="0">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="campaigns_opened_12m">Campaigns Opened (12m)</label>
+                                        <input type="number" id="campaigns_opened_12m" name="campaigns_opened_12m" value="4" min="0">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="campaigns_clicked_12m">Campaigns Clicked (12m)</label>
+                                        <input type="number" id="campaigns_clicked_12m" name="campaigns_clicked_12m" value="2" min="0">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="click_through_rate">Click-through Rate</label>
+                                        <input type="number" id="click_through_rate" name="click_through_rate" value="0.33" min="0" max="1" step="0.01">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="days_since_last_campaign">Days Since Last Campaign</label>
+                                        <input type="number" id="days_since_last_campaign" name="days_since_last_campaign" value="14" min="-1">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="preferred_campaign_channel">Preferred Channel</label>
+                                        <select id="preferred_campaign_channel" name="preferred_campaign_channel">
+                                            <option value="Email">Email</option>
+                                            <option value="SMS">SMS</option>
+                                            <option value="Push Notification">Push Notification</option>
+                                            <option value="Direct Mail">Direct Mail</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="last_campaign_type">Last Campaign Type</label>
+                                        <select id="last_campaign_type" name="last_campaign_type">
+                                            <option value="Retention">Retention</option>
+                                            <option value="Cross-sell">Cross-sell</option>
+                                            <option value="Awareness">Awareness</option>
+                                            <option value="Reactivation">Reactivation</option>
+                                            <option value="Upgrade">Upgrade</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="campaign_offer_category">Campaign Offer</label>
+                                        <select id="campaign_offer_category" name="campaign_offer_category">
+                                            <option value="No Active Offer">No Active Offer</option>
+                                            <option value="Credit Card">Credit Card</option>
+                                            <option value="Insurance">Insurance</option>
+                                            <option value="Investment Fund">Investment Fund</option>
+                                            <option value="Personal Loan">Personal Loan</option>
+                                            <option value="Premium Upgrade">Premium Upgrade</option>
+                                            <option value="Savings Plan">Savings Plan</option>
+                                        </select>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                        
+                        <!-- Right Pane: Realtime Output -->
+                        <div class="sandbox-outputs">
+                            <!-- Predict Results Panel -->
+                            <div class="card glass-card sandbox-prediction-card">
+                                <div class="card-header">
+                                    <h3>Simulated Predictions</h3>
+                                </div>
+                                <div class="card-body flex-prediction-body">
+                                    <div class="prediction-meter-group">
+                                        <div class="meter-wrapper">
+                                            <svg class="progress-ring" width="120" height="120">
+                                                <circle class="progress-ring-bg" stroke="#e5e7eb" stroke-width="8" fill="transparent" r="50" cx="60" cy="60"/>
+                                                <circle class="progress-ring-bar" id="churn-meter-bar" stroke="var(--color-rose)" stroke-width="8" fill="transparent" r="50" cx="60" cy="60" stroke-dasharray="314.16" stroke-dashoffset="314.16"/>
+                                            </svg>
+                                            <div class="meter-label">
+                                                <span class="meter-percent" id="churn-prob-percent">0%</span>
+                                                <span class="meter-name">Churn Risk</span>
+                                            </div>
+                                        </div>
+                                        <div class="prediction-status-label mt-2" id="churn-risk-badge">Low Risk</div>
+                                    </div>
+                                    
+                                    <div class="prediction-meter-group">
+                                        <div class="meter-wrapper">
+                                            <svg class="progress-ring" width="120" height="120">
+                                                <circle class="progress-ring-bg" stroke="#e5e7eb" stroke-width="8" fill="transparent" r="50" cx="60" cy="60"/>
+                                                <circle class="progress-ring-bar" id="cs-meter-bar" stroke="var(--color-emerald)" stroke-width="8" fill="transparent" r="50" cx="60" cy="60" stroke-dasharray="314.16" stroke-dashoffset="314.16"/>
+                                            </svg>
+                                            <div class="meter-label">
+                                                <span class="meter-percent" id="cs-prob-percent">0%</span>
+                                                <span class="meter-name">Cross-Sell</span>
+                                            </div>
+                                        </div>
+                                        <div class="prediction-status-label mt-2" id="cs-accept-badge">No Offer</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Local Drivers Explainer Panel -->
+                            <div class="card glass-card sandbox-explain-card">
+                                <div class="card-header">
+                                    <h3>Local Explanation (Feature Contribution)</h3>
+                                    <p class="card-subtitle">Values representing log-odds impact on Churn probability</p>
+                                </div>
+                                <div class="card-body">
+                                    <div class="drivers-container">
+                                        <h4 class="contrib-title text-rose"><i data-lucide="trending-up"></i> Top Churn Drivers (Increases Risk)</h4>
+                                        <div id="churn-drivers-list" class="contrib-list-container">
+                                            <!-- List items injected -->
+                                            <div class="empty-state">Load a customer to view drivers</div>
+                                        </div>
+                                        
+                                        <h4 class="contrib-title text-cyan mt-6"><i data-lucide="trending-down"></i> Top Churn Restrainers (Reduces Risk)</h4>
+                                        <div id="churn-restrainers-list" class="contrib-list-container">
+                                            <!-- List items injected -->
+                                            <div class="empty-state">Load a customer to view restrainers</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Tab 4: Batch Scoring -->
+                <div class="tab-pane" id="tab-batch">
+                    <div class="batch-scoring-layout">
+                        <!-- Left Panel: Uploader -->
+                        <div class="card glass-card uploader-card">
+                            <div class="card-header">
+                                <h3>Batch Customer Scoring Pipeline</h3>
+                                <p class="card-subtitle">Upload raw customer CSV to calculate risk scores and priority flags</p>
+                            </div>
+                            
+                            <div class="card-body">
+                                <div class="drop-zone" id="csv-drop-zone">
+                                    <div class="drop-zone-content">
+                                        <i data-lucide="upload-cloud" class="drop-zone-icon"></i>
+                                        <h4>Drag & Drop CSV File here</h4>
+                                        <p>or click to browse local files</p>
+                                        <span class="file-spec">Must contain standard customer attributes</span>
+                                    </div>
+                                    <input type="file" id="csv-file-input" accept=".csv" style="display: none;">
+                                </div>
+                                
+                                <div class="file-details-box" id="file-details-box" style="display: none;">
+                                    <div class="file-icon-title">
+                                        <i data-lucide="file-spreadsheet"></i>
+                                        <span id="uploaded-filename">customer_data.csv</span>
+                                    </div>
+                                    <button class="btn btn-secondary btn-sm" id="btn-remove-file"><i data-lucide="x"></i> Remove</button>
+                                </div>
+                                
+                                <hr class="divider">
+                                
+                                <div class="threshold-overrides-group">
+                                    <h4>Custom Pipeline Threshold Overrides (Optional)</h4>
+                                    <div class="overrides-grid mt-2">
+                                        <div class="form-group">
+                                            <label for="override-churn-thresh">Churn Threshold</label>
+                                            <input type="number" id="override-churn-thresh" step="0.001" placeholder="e.g. 0.200">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="override-cs-thresh">Cross-Sell Threshold</label>
+                                            <input type="number" id="override-cs-thresh" step="0.001" placeholder="e.g. 0.340">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <button class="btn btn-primary w-full mt-6" id="btn-run-scoring" disabled>
+                                    <i data-lucide="play"></i>
+                                    <span>Execute Scoring Pipeline</span>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Right Panel: Results & Preview -->
+                        <div class="card glass-card results-preview-card">
+                            <div class="card-header flex-header">
+                                <div>
+                                    <h3>Scoring Pipeline Results</h3>
+                                    <p class="card-subtitle">Detailed metrics and download link will appear below</p>
+                                </div>
+                                <div id="scoring-loader" class="scoring-loader" style="display: none;">
+                                    <div class="spinner"></div>
+                                    <span>Scoring...</span>
+                                </div>
+                            </div>
+                            
+                            <div class="card-body" id="batch-results-container">
+                                <!-- Empty state -->
+                                <div class="empty-state-large" id="batch-empty-state">
+                                    <i data-lucide="binary" class="empty-state-icon"></i>
+                                    <h4>No File Scored Yet</h4>
+                                    <p>Select a CSV file on the left and click Execute to run predictions</p>
+                                </div>
+                                
+                                <!-- Content state (hidden initially) -->
+                                <div id="batch-results-content" style="display: none;">
+                                    <!-- Stats Box -->
+                                    <div class="batch-stats-grid">
+                                        <div class="batch-stat-item">
+                                            <span class="batch-stat-label">Total Processed</span>
+                                            <span class="batch-stat-val" id="batch-stat-total">0</span>
+                                        </div>
+                                        <div class="batch-stat-item">
+                                            <span class="batch-stat-label">Churn Flags</span>
+                                            <span class="batch-stat-val text-rose" id="batch-stat-churn">0</span>
+                                            <span class="batch-stat-rate" id="batch-stat-churn-rate">0.0%</span>
+                                        </div>
+                                        <div class="batch-stat-item">
+                                            <span class="batch-stat-label">Cross-Sell Flags</span>
+                                            <span class="batch-stat-val text-emerald" id="batch-stat-cs">0</span>
+                                            <span class="batch-stat-rate" id="batch-stat-cs-rate">0.0%</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Downloader -->
+                                    <div class="download-box-wrapper mt-6">
+                                        <div class="download-text">
+                                            <h4>Scoring Completed Successfully!</h4>
+                                            <p>A new CSV file is ready with Churn Probabilities, Risk Bands, and Cross-Sell flags.</p>
+                                        </div>
+                                        <a href="#" class="btn btn-emerald btn-lg" id="btn-download-scored">
+                                            <i data-lucide="download"></i>
+                                            <span>Download Scored CSV</span>
+                                        </a>
+                                    </div>
+                                    
+                                    <!-- Table preview -->
+                                    <h4 class="mt-6 font-semibold">First 5 Rows Preview</h4>
+                                    <div class="table-responsive mt-2">
+                                        <table class="custom-table compact-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Customer ID</th>
+                                                    <th>Churn Prob</th>
+                                                    <th>Risk Band</th>
+                                                    <th>Cross-sell Prob</th>
+                                                    <th>Cross-sell Band</th>
+                                                    <th>Cross-sell Flag</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="batch-preview-body">
+                                                <!-- Preview injected -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+            </div>
+        </main>
+    </div>
+    
+    <!-- Script -->
+    <script src="app.js"></script>
+</body>
+</html>
