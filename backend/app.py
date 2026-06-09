@@ -39,7 +39,6 @@ def load_and_initialize_db():
     print(f"Loading customer database from: {RAW_DATA_PATH}")
     df_raw = pd.read_csv(RAW_DATA_PATH)
     
-    # Pre-score database on startup
     print("Running initial scoring pipeline...")
     try:
         predict_pipeline.load_assets()
@@ -48,12 +47,36 @@ def load_and_initialize_db():
         print(f"Loaded and scored {len(CUSTOMER_DB):,} customer records successfully.")
     except Exception as e:
         print(f"ERROR scoring database: {e}")
-        CUSTOMER_DB = df_raw # fallback to raw
+        CUSTOMER_DB = df_raw 
 
 TEMP_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'temp_downloads')
 os.makedirs(TEMP_DIR, exist_ok=True)
 
-# Ensure database is loaded
+MODEL_PERFORMANCE = {
+    'churn': {
+        'label': 'Churn',
+        'threshold': 0.1926,
+        'contacts': 2251,
+        'precision': 0.332,
+        'recall': 0.511,
+        'f1_score': 0.40,
+        'roc_auc': 0.7220,
+        'pr_auc': 0.3718,
+        'profit': 185866,
+    },
+    'crosssell': {
+        'label': 'Cross-sell',
+        'threshold': 0.3399,
+        'contacts': 2189,
+        'precision': 0.404,
+        'recall': 0.408,
+        'f1_score': 0.41,
+        'roc_auc': 0.6301,
+        'pr_auc': 0.3935,
+        'profit': 166055,
+    },
+}
+
 load_and_initialize_db()
 
 @app.route('/')
@@ -67,11 +90,12 @@ def get_summary():
         return jsonify({'error': 'No data loaded'}), 404
         
     cfg = predict_pipeline.load_assets()['config']
-    cost_contact = request.args.get('cost_contact', default=float(cfg['cost_contact']), type=float)
-    base_value_saved = request.args.get('base_value_saved', default=float(cfg['base_value_saved']), type=float)
-    revenue_per_accept = request.args.get('revenue_per_accept', default=float(cfg['revenue_per_accept']), type=float)
+    cost_contact = float(cfg['cost_contact'])
+    base_value_saved = float(cfg['base_value_saved'])
+    revenue_per_accept = float(cfg['revenue_per_accept'])
     
     total = len(CUSTOMER_DB)
+    
 
     has_actual = 'churned' in CUSTOMER_DB.columns
     actual_churn_rate = float(CUSTOMER_DB['churned'].mean()) if has_actual else 0.0
@@ -81,7 +105,6 @@ def get_summary():
     pred_cs_rate = float(CUSTOMER_DB['accept_prob'].mean())
     targeted_churn_rate = float(CUSTOMER_DB['churn_flag'].mean())
     targeted_cs_rate = float(CUSTOMER_DB['crosssell_flag'].mean())
-    
 
     churn_flags = CUSTOMER_DB['churn_flag']
     churn_probs = CUSTOMER_DB['churn_prob']
@@ -98,6 +121,7 @@ def get_summary():
     retention_revenue = backtest_retention_revenue if backtest_retention_revenue is not None else expected_retention_revenue
     retention_net = retention_revenue - retention_cost
     
+    
     cs_flags = CUSTOMER_DB['crosssell_flag']
     cs_probs = CUSTOMER_DB['accept_prob']
     expected_cs_accepts = float((cs_probs * cs_flags).sum())
@@ -112,15 +136,12 @@ def get_summary():
     cs_net = cs_revenue - cs_cost
     profit_mode = 'backtest' if backtest_retention_revenue is not None and backtest_cs_revenue is not None else 'expected'
     
-    # Totals
     total_revenue = retention_revenue + cs_revenue
     total_cost = retention_cost + cs_cost
     total_net = total_revenue - total_cost
     
-    # Risk band distribution
     risk_counts = CUSTOMER_DB['churn_risk_band'].value_counts().to_dict()
     crosssell_band_counts = CUSTOMER_DB['crosssell_prob_band'].value_counts().to_dict() if 'crosssell_prob_band' in CUSTOMER_DB.columns else {}
-    # CLV segment distribution
     clv_col = 'clv_segment' if 'clv_segment' in CUSTOMER_DB.columns else 'clv_score'
     if clv_col == 'clv_segment':
         clv_counts = CUSTOMER_DB['clv_segment'].value_counts().to_dict()
@@ -176,7 +197,8 @@ def get_summary():
             'total_revenue': total_revenue,
             'total_net': total_net,
             'profit_mode': profit_mode
-        }
+        },
+        'model_performance': MODEL_PERFORMANCE
     })
 
 @app.route('/api/customers')
@@ -275,7 +297,7 @@ def get_priority_crosssell():
     active_non_churn = CUSTOMER_DB[(CUSTOMER_DB['churn_flag'] == 0)]
     if 'churned' in active_non_churn.columns:
         active_non_churn = active_non_churn[active_non_churn['churned'] == 0]
-        
+         
     priority = active_non_churn.sort_values('accept_prob', ascending=False).head(1000)
     
     cols = ['customer_id', 'accept_prob', 'crosssell_prob_band', 'clv_segment']
@@ -359,7 +381,6 @@ def upload_file():
         
         risk_counts = df_scored['churn_risk_band'].value_counts().to_dict()
         
-        # Preview first 5 rows
         preview_cols = ['customer_id', 'churn_prob', 'churn_risk_band', 'accept_prob', 'crosssell_prob_band', 'crosssell_flag']
         preview_cols = [c for c in preview_cols if c in df_scored.columns]
         preview_data = df_scored[preview_cols].head(5).to_dict(orient='records')

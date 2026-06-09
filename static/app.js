@@ -1,13 +1,11 @@
 // Customer Churn & Cross-Sell Dashboard Frontend Logic
 
 document.addEventListener('DOMContentLoaded', () => {
-    // --- Initialize Lucide Icons ---
     const refreshIcons = () => {
         if (window.lucide) lucide.createIcons();
     };
     refreshIcons();
 
-    // --- State variables ---
     let activeTab = 'dashboard';
     let summaryData = null;
     let priorityType = 'retention'; // 'retention' or 'crosssell'
@@ -16,28 +14,16 @@ document.addEventListener('DOMContentLoaded', () => {
     let priorityPage = 1;
     const priorityLimit = 12;
     
-    // --- Chart instances (to destroy before recreating) ---
     let chartRiskDist = null;
     let chartClvBreakdown = null;
     let chartChannel = null;
 
-    // --- DOM Elements ---
     const navItems = document.querySelectorAll('.nav-item');
     const tabPanes = document.querySelectorAll('.tab-pane');
     const pageTitle = document.getElementById('page-title');
     const pageSubtitle = document.getElementById('page-subtitle');
     const refreshBtn = document.getElementById('refresh-db-btn');
 
-    // ROI Sliders
-    const sliderCost = document.getElementById('slider-cost-contact');
-    const sliderSaved = document.getElementById('slider-base-saved');
-    const sliderRevenue = document.getElementById('slider-revenue-accept');
-    
-    const labelCost = document.getElementById('val-cost-contact');
-    const labelSaved = document.getElementById('val-base-saved');
-    const labelRevenue = document.getElementById('val-revenue-accept');
-
-    // Priority list elements
     const priorityToggleGroup = document.getElementById('priority-toggle-group');
     const prioritySearch = document.getElementById('priority-search');
     const priorityTableHeaders = document.getElementById('priority-table-headers');
@@ -47,28 +33,31 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnPrevPage = document.getElementById('btn-prev-page');
     const btnNextPage = document.getElementById('btn-next-page');
 
-    // Sandbox elements
     const sandboxForm = document.getElementById('sandbox-form');
     const sandboxCustSearch = document.getElementById('sandbox-customer-search');
     const btnLoadSandbox = document.getElementById('btn-load-sandbox');
     const sandboxBadge = document.getElementById('loaded-customer-badge');
-    const churnMeterBar = document.getElementById('churn-meter-bar');
     const churnProbPercent = document.getElementById('churn-prob-percent');
     const churnRiskBadge = document.getElementById('churn-risk-badge');
-    const csMeterBar = document.getElementById('cs-meter-bar');
     const csProbPercent = document.getElementById('cs-prob-percent');
     const csAcceptBadge = document.getElementById('cs-accept-badge');
-    const churnDriversList = document.getElementById('churn-drivers-list');
-    const churnRestrainersList = document.getElementById('churn-restrainers-list');
+    const sandboxActionText = document.getElementById('sandbox-action-text');
+    const churnFactorList = document.getElementById('churn-factor-list');
+    const crosssellFactorList = document.getElementById('crosssell-factor-list');
+    const productCountInput = document.getElementById('num_products_held');
+    const productFlagFields = [
+        'has_credit_card',
+        'has_personal_loan',
+        'has_home_loan',
+        'has_investment_account',
+        'has_insurance_product'
+    ];
 
-    // Batch Scoring elements
     const dropZone = document.getElementById('csv-drop-zone');
     const fileInput = document.getElementById('csv-file-input');
     const fileDetailsBox = document.getElementById('file-details-box');
     const uploadedFilename = document.getElementById('uploaded-filename');
     const btnRemoveFile = document.getElementById('btn-remove-file');
-    const overrideChurn = document.getElementById('override-churn-thresh');
-    const overrideCs = document.getElementById('override-cs-thresh');
     const btnRunScoring = document.getElementById('btn-run-scoring');
     const scoringLoader = document.getElementById('scoring-loader');
     const batchEmptyState = document.getElementById('batch-empty-state');
@@ -84,7 +73,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let selectedFile = null;
 
-    // --- Tab Switching ---
     navItems.forEach(item => {
         item.addEventListener('click', () => {
             const tabName = item.getAttribute('data-tab');
@@ -95,7 +83,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function switchTab(tabName) {
         activeTab = tabName;
         
-        // Update Nav Link classes
         navItems.forEach(item => {
             if (item.getAttribute('data-tab') === tabName) {
                 item.classList.add('active');
@@ -104,7 +91,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // Show/Hide Panes
         tabPanes.forEach(pane => {
             if (pane.id === `tab-${tabName}`) {
                 pane.classList.add('active');
@@ -115,29 +101,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Update titles
         if (tabName === 'dashboard') {
-            pageTitle.innerText = "Predictive Business Dashboard";
-            pageSubtitle.innerText = "Overview of churn risks, cross-sell optimization, and dynamic ROI";
+            pageTitle.innerText = "Customer Churn & Cross-Sell Prediction";
+            pageSubtitle.innerText = "Retail banking churn and cross-sell dashboard";
         } else if (tabName === 'priority') {
-            pageTitle.innerText = "Priority Customer Targeting";
-            pageSubtitle.innerText = "Identified action lists for retention campaigns and cross-sell offers";
+            pageTitle.innerText = "Top Customers";
+            pageSubtitle.innerText = "Customers ranked by model score";
             loadPriorityLists();
         } else if (tabName === 'sandbox') {
-            pageTitle.innerText = "Simulation Sandbox";
-            pageSubtitle.innerText = "Adjust customer parameters and run real-time what-if predictive simulations";
+            pageTitle.innerText = "Single Customer Prediction";
+            pageSubtitle.innerText = "Enter customer values";
         } else if (tabName === 'batch') {
-            pageTitle.innerText = "Batch Scoring Pipeline";
-            pageSubtitle.innerText = "Score entire customer CSV files and download predictions instantly";
+            pageTitle.innerText = "Batch Scoring";
+            pageSubtitle.innerText = "Upload and score customers";
         }
     }
 
-    // --- Fetch Dashboard Summary Statistics ---
     async function fetchSummary() {
-        const cost = sliderCost.value;
-        const saved = sliderSaved.value;
-        const revenue = sliderRevenue.value;
-        
         try {
-            const response = await fetch(`/api/summary?cost_contact=${cost}&base_value_saved=${saved}&revenue_per_accept=${revenue}`);
+            const response = await fetch('/api/summary');
             if (!response.ok) throw new Error("API error fetching summary stats");
             summaryData = await response.json();
             
@@ -145,6 +126,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (activeTab === 'dashboard') {
                 renderCharts(summaryData);
                 updateProfitSummary(summaryData.financials);
+                updateModelPerformance(summaryData.model_performance);
             }
             
             if (summaryData.config) {
@@ -153,7 +135,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (error) {
             console.error("Error loading dashboard data:", error);
-            pageSubtitle.innerText = "Backend data could not be loaded. Start the Flask server and refresh.";
+            pageSubtitle.innerText = "Start Flask and refresh.";
         }
     }
 
@@ -175,13 +157,13 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateProfitSummary(f) {
         const isBacktest = f.profit_mode === 'backtest';
         document.getElementById('profit-summary-title').innerText = isBacktest
-            ? 'Backtested Campaign Net Value'
-            : 'Expected Campaign Net Value';
+            ? 'Backtested Net Value'
+            : 'Expected Net Value';
         document.getElementById('label-retention-revenue').innerText = isBacktest
-            ? 'Revenue from Actual Churners Targeted'
+            ? 'Saved Revenue'
             : 'Expected Saved Revenue';
         document.getElementById('label-cs-revenue').innerText = isBacktest
-            ? 'Revenue from Actual Acceptors Targeted'
+            ? 'Accepted Revenue'
             : 'Expected Accepted Revenue';
 
         document.getElementById('profit-retention').innerText = `$${Math.round(f.retention_net).toLocaleString()}`;
@@ -195,33 +177,35 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('detail-cs-cost').innerText = `$${Math.round(f.crosssell_cost).toLocaleString()}`;
     }
 
-    // --- Dynamic ROI Sliders Events ---
-    sliderCost.addEventListener('input', () => {
-        labelCost.innerText = `$${sliderCost.value}`;
-        debounceSummaryFetch();
-    });
-    sliderSaved.addEventListener('input', () => {
-        labelSaved.innerText = `$${sliderSaved.value}`;
-        debounceSummaryFetch();
-    });
-    sliderRevenue.addEventListener('input', () => {
-        labelRevenue.innerText = `$${sliderRevenue.value}`;
-        debounceSummaryFetch();
-    });
+    function updateModelPerformance(performance) {
+        if (!performance) return;
 
-    let summaryTimeout = null;
-    function debounceSummaryFetch() {
-        clearTimeout(summaryTimeout);
-        summaryTimeout = setTimeout(fetchSummary, 300);
+        const pct = value => `${(Number(value) * 100).toFixed(1)}%`;
+        const dec = value => Number(value).toFixed(3);
+        const money = value => `$${Math.round(Number(value)).toLocaleString()}`;
+        const churn = performance.churn || {};
+        const cs = performance.crosssell || {};
+
+        document.getElementById('metric-churn-precision').innerText = pct(churn.precision);
+        document.getElementById('metric-churn-recall').innerText = pct(churn.recall);
+        document.getElementById('metric-churn-f1').innerText = dec(churn.f1_score);
+        document.getElementById('metric-churn-roc').innerText = dec(churn.roc_auc);
+        document.getElementById('metric-churn-pr').innerText = dec(churn.pr_auc);
+        document.getElementById('metric-churn-profit').innerText = money(churn.profit);
+
+        document.getElementById('metric-cs-precision').innerText = pct(cs.precision);
+        document.getElementById('metric-cs-recall').innerText = pct(cs.recall);
+        document.getElementById('metric-cs-f1').innerText = dec(cs.f1_score);
+        document.getElementById('metric-cs-roc').innerText = dec(cs.roc_auc);
+        document.getElementById('metric-cs-pr').innerText = dec(cs.pr_auc);
+        document.getElementById('metric-cs-profit').innerText = money(cs.profit);
     }
 
-    // --- Chart rendering via ChartJS ---
     function renderCharts(data) {
         if (!window.Chart) {
             console.warn("Chart.js is not available; skipping chart rendering.");
             return;
         }
-        // Destroy old charts to prevent duplicate canvases overlapping
         if (chartRiskDist) chartRiskDist.destroy();
         if (chartClvBreakdown) chartClvBreakdown.destroy();
         if (chartChannel) chartChannel.destroy();
@@ -252,14 +236,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 maintainAspectRatio: false,
                 plugins: {
                     legend: {
-                        position: 'right',
-                        labels: { color: '#475569', font: { family: 'Inter', size: 11 } }
+                        position: 'bottom',
+                        labels: { color: '#475569', font: { family: 'Inter', size: 13 } }
                     }
                 }
             }
         });
 
-        // 2. Cross-Sell Probability Band Breakdown Bar Chart
         const clvCtx = document.getElementById('chart-clv-breakdown').getContext('2d');
         const clvLabels = ['Low Probability', 'Medium Probability', 'High Probability'];
         const clvValues = clvLabels.map(label => data.crosssell_band_counts[label] || 0);
@@ -282,13 +265,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     legend: { display: false }
                 },
                 scales: {
-                    x: { grid: { display: false }, ticks: { color: '#475569' } },
-                    y: { grid: { color: '#e5e7eb' }, ticks: { color: '#475569' } }
+                    x: { grid: { display: false }, ticks: { color: '#475569', font: { size: 12 } } },
+                    y: { grid: { color: '#e5e7eb' }, ticks: { color: '#475569', font: { size: 12 } } }
                 }
             }
         });
 
-        // 3. Campaign Channel Effectiveness Grouped Bar Chart
         const channelCtx = document.getElementById('chart-channel-effectiveness').getContext('2d');
         const channels = Object.keys(data.channel_effectiveness);
         const avgChurnProbs = channels.map(c => data.channel_effectiveness[c].avg_churn_prob * 100);
@@ -319,26 +301,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 plugins: {
                     legend: {
                         position: 'top',
-                        labels: { color: '#475569', font: { family: 'Inter' } }
+                        labels: { color: '#475569', font: { family: 'Inter', size: 13 } }
                     }
                 },
                 scales: {
-                    x: { grid: { display: false }, ticks: { color: '#475569' } },
+                    x: { grid: { display: false }, ticks: { color: '#475569', font: { size: 12 } } },
                     y: { 
                         grid: { color: '#e5e7eb' }, 
-                        ticks: { color: '#475569', callback: value => `${value}%` } 
+                        ticks: { color: '#475569', font: { size: 12 }, callback: value => `${value}%` } 
                     }
                 }
             }
         });
     }
 
-    // --- Tab 2: Priority Lists Logic ---
     priorityToggleGroup.addEventListener('click', (e) => {
         const targetBtn = e.target.closest('.btn-tab-toggle');
         if (!targetBtn) return;
         
-        // Update active class
         priorityToggleGroup.querySelectorAll('.btn-tab-toggle').forEach(btn => btn.classList.remove('active'));
         targetBtn.classList.add('active');
         
@@ -346,9 +326,9 @@ document.addEventListener('DOMContentLoaded', () => {
         priorityPage = 1;
         
         if (priorityType === 'retention') {
-            priorityListDesc.innerText = "Top active customers with highest predicted churn probability";
+            priorityListDesc.innerText = "Highest churn probability";
         } else {
-            priorityListDesc.innerText = "Top active, non-churning customers with highest cross-sell offer acceptance probability";
+            priorityListDesc.innerText = "Highest cross-sell probability";
         }
         
         filterAndRenderPriorityTable();
@@ -361,7 +341,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadPriorityLists() {
         try {
-            // Only fetch if lists are empty
             if (priorityData.retention.length === 0) {
                 const rRes = await fetch('/api/priority/retention');
                 priorityData.retention = await rRes.json();
@@ -374,7 +353,7 @@ document.addEventListener('DOMContentLoaded', () => {
             filterAndRenderPriorityTable();
         } catch (error) {
             console.error("Error loading priority lists:", error);
-            priorityTableBody.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-rose">Failed to load priority lists. Make sure backend is running.</td></tr>`;
+            priorityTableBody.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-rose">Could not load customers. Start Flask and refresh.</td></tr>`;
         }
     }
 
@@ -402,7 +381,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderPriorityTable() {
-        // Clear body and headers
         priorityTableHeaders.innerHTML = '';
         priorityTableBody.innerHTML = '';
         
@@ -424,7 +402,6 @@ document.addEventListener('DOMContentLoaded', () => {
         btnPrevPage.disabled = priorityPage === 1;
         btnNextPage.disabled = priorityPage === pages;
 
-        // Injected headers based on type
         if (priorityType === 'retention') {
             priorityTableHeaders.innerHTML = `
                 <th>Customer ID</th>
@@ -444,7 +421,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td><span class="clv-badge ${cust.clv_segment || ''}">${cust.clv_segment || 'N/A'}</span></td>
                     <td>
                         <button class="btn btn-secondary btn-sm btn-simulate" data-id="${cust.customer_id}">
-                            <i data-lucide="sliders" class="w-3 h-3 mr-1 inline"></i> Sandbox
+                            <i data-lucide="sliders" class="w-3 h-3 mr-1 inline"></i> View
                         </button>
                     </td>
                 `;
@@ -468,7 +445,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td><span class="clv-badge ${cust.clv_segment || ''}">${cust.clv_segment || 'N/A'}</span></td>
                     <td>
                         <button class="btn btn-secondary btn-sm btn-simulate" data-id="${cust.customer_id}">
-                            <i data-lucide="sliders" class="w-3 h-3 mr-1 inline"></i> Sandbox
+                            <i data-lucide="sliders" class="w-3 h-3 mr-1 inline"></i> View
                         </button>
                     </td>
                 `;
@@ -478,7 +455,6 @@ document.addEventListener('DOMContentLoaded', () => {
         
         refreshIcons();
         
-        // Add click events to "Simulate" buttons
         priorityTableBody.querySelectorAll('.btn-simulate').forEach(btn => {
             btn.addEventListener('click', () => {
                 const custId = btn.getAttribute('data-id');
@@ -502,18 +478,26 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // --- Tab 3: What-If Sandbox Logic ---
     
-    // Auto-predict debouncer
     let predictTimeout = null;
     function triggerAutoPredict() {
         clearTimeout(predictTimeout);
         predictTimeout = setTimeout(runSandboxPrediction, 400);
     }
 
-    // Attach listeners to all inputs in sandbox form
+    function syncProductCount() {
+        const selectedProducts = productFlagFields.reduce((total, field) => {
+            const input = document.getElementById(field);
+            return total + (input && input.checked ? 1 : 0);
+        }, 0);
+        productCountInput.value = 1 + selectedProducts;
+    }
+
     sandboxForm.addEventListener('input', (e) => {
         if (e.target.type === 'number' || e.target.tagName === 'SELECT' || e.target.type === 'checkbox') {
+            if (productFlagFields.includes(e.target.id)) {
+                syncProductCount();
+            }
             triggerAutoPredict();
         }
     });
@@ -539,19 +523,16 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             const data = await response.json();
             
-            // Switch view
             switchTab('sandbox');
             sandboxCustSearch.value = custId;
             
-            // Set loaded badge
             sandboxBadge.innerHTML = `
-                <span>Currently Simulating: <strong>${custId}</strong> (CLV Segment: ${data.details.clv_segment || 'N/A'})</span>
-                <button type="button" id="btn-clear-sandbox">Reset to Default</button>
+                <span>Loaded: <strong>${custId}</strong> (CLV: ${data.details.clv_segment || 'N/A'})</span>
+                <button type="button" id="btn-clear-sandbox">Reset</button>
             `;
             
             document.getElementById('btn-clear-sandbox').addEventListener('click', resetSandboxForm);
 
-            // Populate form fields
             const details = data.details;
             for (const key in details) {
                 const input = document.getElementById(key);
@@ -564,7 +545,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            // Trigger prediction & drivers chart immediately
+            syncProductCount();
             updateSandboxUI(details, data.contributions);
         } catch (error) {
             console.error("Error loading customer into sandbox:", error);
@@ -574,17 +555,15 @@ document.addEventListener('DOMContentLoaded', () => {
     function resetSandboxForm() {
         sandboxForm.reset();
         sandboxCustSearch.value = '';
-        sandboxBadge.innerHTML = `<span>Creating Custom Simulation Profile</span>`;
-        // Re-run standard prediction on defaults
+        sandboxBadge.innerHTML = `<span>Custom profile</span>`;
+        syncProductCount();
         triggerAutoPredict();
     }
 
     async function runSandboxPrediction() {
-        // Collect form data
         const formData = new FormData(sandboxForm);
         const payload = {};
         
-        // Handle normal inputs
         formData.forEach((value, key) => {
             // Convert numbers
             const inputEl = document.getElementById(key);
@@ -595,13 +574,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
         
-        // Handle checkbox booleans (unchecked boxes aren't in FormData)
-        const checkFields = ['has_credit_card', 'has_personal_loan', 'has_home_loan', 'has_investment_account', 'has_insurance_product'];
-        checkFields.forEach(field => {
+        syncProductCount();
+        productFlagFields.forEach(field => {
             payload[field] = document.getElementById(field).checked ? 1 : 0;
         });
+        payload['num_products_held'] = parseInt(productCountInput.value);
 
-        // Set select elements numbers
         payload['complaint_raised'] = parseInt(document.getElementById('complaint_raised').value);
 
         try {
@@ -610,7 +588,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
-            if (!response.ok) throw new Error("Sandbox prediction failed");
+            if (!response.ok) throw new Error("Prediction failed");
             const data = await response.json();
             
             updateSandboxUI(data.predictions, data.contributions);
@@ -619,19 +597,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function updateSandboxUI(pred, contrib) {
-        // Churn Progress meter
+    function updateSandboxUI(pred, contributions) {
         const churnP = pred.churn_prob;
-        const churnPercentText = `${(churnP * 100).toFixed(1)}%`;
-        churnProbPercent.innerText = churnPercentText;
-        
-        // Calculate offset (circumference = 314.16)
-        const churnOffset = 314.16 - (churnP * 314.16);
-        churnMeterBar.style.strokeDashoffset = churnOffset;
-        
-        // Risk Badge color matching
+        churnProbPercent.innerText = `${(churnP * 100).toFixed(1)}%`;
+
         churnRiskBadge.innerText = pred.churn_risk_band || 'Scoring';
-        churnRiskBadge.className = 'prediction-status-label mt-2';
+        churnRiskBadge.className = 'prediction-status-label';
         if (pred.churn_risk_band === 'High Risk') {
             churnRiskBadge.style.color = 'var(--color-rose)';
             churnRiskBadge.style.borderColor = 'rgba(244,63,94,0.3)';
@@ -646,18 +617,12 @@ document.addEventListener('DOMContentLoaded', () => {
             churnRiskBadge.style.backgroundColor = '#ecfeff';
         }
 
-        // Cross-Sell Progress meter
         const csP = pred.accept_prob;
-        const csPercentText = `${(csP * 100).toFixed(1)}%`;
-        csProbPercent.innerText = csPercentText;
-        
-        const csOffset = 314.16 - (csP * 314.16);
-        csMeterBar.style.strokeDashoffset = csOffset;
-        
-        // Crosssell offer eligibility badge
+        csProbPercent.innerText = `${(csP * 100).toFixed(1)}%`;
+
         const isEligible = pred.crosssell_flag === 1;
-        csAcceptBadge.innerText = `${pred.crosssell_prob_band || 'Scoring'}${isEligible ? ' / Target Offer' : ' / No Offer'}`;
-        csAcceptBadge.className = 'prediction-status-label mt-2';
+        csAcceptBadge.innerText = isEligible ? 'Target Offer' : 'No Offer';
+        csAcceptBadge.className = 'prediction-status-label';
         if (isEligible) {
             csAcceptBadge.style.color = 'var(--color-emerald)';
             csAcceptBadge.style.borderColor = 'rgba(16,185,129,0.3)';
@@ -668,44 +633,39 @@ document.addEventListener('DOMContentLoaded', () => {
             csAcceptBadge.style.backgroundColor = '#f8fafc';
         }
 
-        // Render Local Drivers Explainer horizontal bar lists
-        renderDriversList(churnDriversList, contrib.drivers, 'driver');
-        renderDriversList(churnRestrainersList, contrib.restrainers, 'restrainer');
+        if (pred.churn_flag === 1) {
+            sandboxActionText.innerText = 'Contact this customer for retention support.';
+        } else if (isEligible) {
+            sandboxActionText.innerText = 'Customer is suitable for a cross-sell offer.';
+        } else {
+            sandboxActionText.innerText = 'No immediate campaign action needed.';
+        }
+
+        renderFactorList(churnFactorList, contributions && contributions.churn);
+        renderFactorList(crosssellFactorList, contributions && contributions.crosssell);
     }
 
-    function renderDriversList(container, list, type) {
+    function renderFactorList(container, factors) {
         container.innerHTML = '';
-        if (!list || list.length === 0) {
-            container.innerHTML = `<div class="empty-state">No significant impact detected</div>`;
+        if (!factors || factors.length === 0) {
+            container.innerHTML = `<div class="empty-state">No factors available</div>`;
             return;
         }
 
-        // Find max impact to scale bars relative to each other
-        const maxVal = Math.max(...list.map(item => item.importance), 0.01);
-
-        list.forEach(item => {
+        factors.forEach(item => {
             const row = document.createElement('div');
-            row.className = 'contrib-row';
-            
-            // Percentage width of the bar
-            const percentWidth = Math.min((item.importance / maxVal) * 100, 100);
-            
+            row.className = 'factor-row';
+            const signClass = item.contribution >= 0 ? 'positive' : 'negative';
+            const sign = item.contribution >= 0 ? '+' : '';
             row.innerHTML = `
-                <div class="contrib-info">
-                    <span class="contrib-name">${item.display_name}</span>
-                    <span class="contrib-val ${type === 'driver' ? 'text-rose' : 'text-cyan'}">${item.contribution >= 0 ? '+' : ''}${item.contribution.toFixed(3)}</span>
-                </div>
-                <div class="contrib-bar-wrapper">
-                    <div class="contrib-bar ${type}" style="width: ${percentWidth}%"></div>
-                </div>
+                <span class="factor-name">${item.display_name}</span>
+                <span class="factor-score ${signClass}">${sign}${item.contribution.toFixed(3)}</span>
             `;
             container.appendChild(row);
         });
     }
 
-    // --- Tab 4: Batch Scoring Logic ---
 
-    // File Drop Zone Click
     dropZone.addEventListener('click', () => fileInput.click());
 
     fileInput.addEventListener('change', (e) => {
@@ -714,7 +674,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Drag and drop events
     dropZone.addEventListener('dragover', (e) => {
         e.preventDefault();
         dropZone.classList.add('active');
@@ -751,23 +710,16 @@ document.addEventListener('DOMContentLoaded', () => {
         fileDetailsBox.style.display = 'none';
         btnRunScoring.disabled = true;
         
-        // Reset results area
         batchEmptyState.style.display = 'flex';
         batchResultsContent.style.display = 'none';
     });
 
-    // Execute scoring
     btnRunScoring.addEventListener('click', async () => {
         if (!selectedFile) return;
 
-        // Setup Form Data
         const formData = new FormData();
         formData.append('file', selectedFile);
         
-        if (overrideChurn.value) formData.append('churn_threshold', overrideChurn.value);
-        if (overrideCs.value) formData.append('crosssell_threshold', overrideCs.value);
-
-        // UI Loading State
         scoringLoader.style.display = 'flex';
         btnRunScoring.disabled = true;
         btnRemoveFile.disabled = true;
@@ -786,7 +738,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const results = await response.json();
             displayBatchResults(results);
         } catch (error) {
-            alert(`Scoring Error: ${error.message}`);
+            alert(`Scoring error: ${error.message}`);
         } finally {
             scoringLoader.style.display = 'none';
             btnRunScoring.disabled = false;
@@ -798,17 +750,14 @@ document.addEventListener('DOMContentLoaded', () => {
         batchEmptyState.style.display = 'none';
         batchResultsContent.style.display = 'block';
 
-        // Update stats
         batchStatTotal.innerText = data.stats.total_rows.toLocaleString();
         batchStatChurn.innerText = data.stats.churn_flags.toLocaleString();
         batchStatChurnRate.innerText = `${(data.stats.churn_rate * 100).toFixed(1)}% rate`;
         batchStatCs.innerText = data.stats.crosssell_flags.toLocaleString();
         batchStatCsRate.innerText = `${(data.stats.crosssell_rate * 100).toFixed(1)}% rate`;
 
-        // Update download button link
         btnDownloadScored.href = `/api/download/${data.file_key}`;
 
-        // Populate preview table
         batchPreviewBody.innerHTML = '';
         data.preview.forEach(row => {
             const tr = document.createElement('tr');
@@ -827,7 +776,6 @@ document.addEventListener('DOMContentLoaded', () => {
         refreshIcons();
     }
 
-    // --- Reload DB Button Event ---
     refreshBtn.addEventListener('click', () => {
         refreshBtn.classList.add('spinning');
         fetchSummary().finally(() => {
@@ -835,7 +783,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Add spinner style dynamically
     const styleSheet = document.createElement("style");
     styleSheet.innerText = `
         @keyframes spinAround {
@@ -848,7 +795,7 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
     document.head.appendChild(styleSheet);
 
-    // --- On Load initialization ---
     fetchSummary();
-    triggerAutoPredict(); // Run initial mock prediction on default inputs
+    syncProductCount();
+    triggerAutoPredict(); 
 });

@@ -6,12 +6,10 @@ import numpy as np
 from sklearn.pipeline import Pipeline
 from sklearn.base import BaseEstimator, TransformerMixin
 
-# Resolve paths relative to this script
 BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
 FINAL_DIR = os.path.dirname(BACKEND_DIR)
 MODELS_DIR = os.path.join(FINAL_DIR, 'models')
 
-# Global variables for models and configs
 _ASSETS = None
 
 DROP_COLS = [
@@ -31,13 +29,16 @@ DROP_COLS = [
 ]
 
 ENGINEERED_FEATURES = [
-    'campaign_open_rate',
-    'balance_income_ratio',
-    'savings_efficiency',
     'risk_indicator',
-    'monthly_txn_volume',
     'complaint_nps_interaction',
-    'products_per_tenure',
+]
+
+PRODUCT_FLAG_COLS = [
+    'has_credit_card',
+    'has_personal_loan',
+    'has_home_loan',
+    'has_investment_account',
+    'has_insurance_product',
 ]
 
 DEFAULT_CONFIG = {
@@ -56,7 +57,6 @@ DEFAULT_CONFIG = {
 
 
 class FeatureEngineeringTransformer(BaseEstimator, TransformerMixin):
-    """Scikit-learn transformer for project feature engineering."""
 
     def fit(self, X, y=None):
         return self
@@ -65,7 +65,6 @@ class FeatureEngineeringTransformer(BaseEstimator, TransformerMixin):
         return engineer_features(X)
 
 def load_assets():
-    """Loads all models, preprocessors, thresholds, and extracts feature weights."""
     global _ASSETS
     if _ASSETS is not None:
         return _ASSETS
@@ -90,11 +89,9 @@ def load_assets():
         with open(config_path) as f:
             config.update(json.load(f))
 
-    # Extract feature names
     churn_features = _extract_feature_names(churn_prep)
     cs_features = _extract_feature_names(cs_prep)
 
-    # Extract average coefficients from CalibratedClassifierCV
     churn_coefs = _extract_coefficients(churn_model)
     cs_coefs = _extract_coefficients(cs_model)
 
@@ -140,31 +137,31 @@ def _expected_raw_features(prep):
 def _prepare_raw_features(df_raw, prep):
     df = df_raw.copy()
     df = df.drop(columns=[c for c in DROP_COLS if c in df.columns], errors='ignore')
+    df = normalize_product_count(df)
     expected_cols = _expected_raw_features(prep)
     missing = [col for col in expected_cols if col not in df.columns]
     if missing:
         raise ValueError(f"Missing required input feature(s): {', '.join(missing)}")
     return df[expected_cols]
 
-def engineer_features(df_in):
-    """Applies the same feature engineering logic as the training pipeline."""
+def normalize_product_count(df_in):
     df_out = df_in.copy()
-    
-    # Feature engineering formulas
-    df_out['campaign_open_rate']        = df_out['campaigns_opened_12m'] / (df_out['campaigns_sent_12m'] + 1)
-    df_out['balance_income_ratio']      = df_out['account_balance'] / (df_out['annual_income'] + 1)
-    df_out['savings_efficiency']        = df_out['account_balance'] / (df_out['avg_monthly_transactions'] + 1)
-    df_out['risk_indicator']            = df_out['missed_payments_6m'] + df_out['complaint_raised']
-    df_out['monthly_txn_volume']        = df_out['avg_monthly_transactions'] * df_out['avg_transaction_value']
-    
+    if all(col in df_out.columns for col in PRODUCT_FLAG_COLS):
+        flags = df_out[PRODUCT_FLAG_COLS].apply(pd.to_numeric, errors='coerce').fillna(0)
+        flags = flags.clip(lower=0, upper=1)
+        df_out['num_products_held'] = 1 + flags.sum(axis=1).astype(int)
+    return df_out
+
+def engineer_features(df_in):
+    df_out = df_in.copy()
     nps_filled = df_out['nps_score'].fillna(df_out['nps_score'].median())
+
+    df_out['risk_indicator'] = df_out['missed_payments_6m'] + df_out['complaint_raised']
     df_out['complaint_nps_interaction'] = (10 - nps_filled) * (df_out['complaint_raised'] + 1)
-    df_out['products_per_tenure']       = df_out['num_products_held'] / (df_out['tenure_months'] / 12 + 1)
-    
+
     return df_out
 
 def build_integrated_pipelines(overwrite=False):
-    """Build raw-input sklearn pipelines from the saved preprocessors and models."""
     assets = load_assets()
     paths = {
         'churn_pipeline': os.path.join(MODELS_DIR, 'churn_pipeline.pkl'),
@@ -192,7 +189,6 @@ def build_integrated_pipelines(overwrite=False):
     return paths
 
 def score_dataframe(df_raw, custom_thresholds=None):
-    """Scores a dataframe of raw customers. Returns dataframe with predictions."""
     assets = load_assets()
     cfg = assets['config']
     
@@ -238,43 +234,48 @@ def score_dataframe(df_raw, custom_thresholds=None):
     
     return df_scored
 
-def explain_customer(customer_row_dict):
-    """Calculates local feature contributions (similar to SHAP) for a single customer."""
-    assets = load_assets()
-    
-    df_single = pd.DataFrame([customer_row_dict])
-    df_raw = _prepare_raw_features(df_single, assets['churn_prep'])
-    df_feat = engineer_features(df_raw)
-    
-    X_prep = assets['churn_prep'].transform(df_feat)[0]
-    coefs = assets['churn_coefs']
+def _explain_with_artifacts(df_single, prep, coefs, feature_names, top_n=4):
     if coefs is None:
-        return {'drivers': [], 'restrainers': []}
-    feature_names = assets['churn_features']
-    
+        return []
+
+    df_raw = _prepare_raw_features(df_single, prep)
+    df_feat = engineer_features(df_raw)
+    X_prep = prep.transform(df_feat)[0]
     contributions = X_prep * coefs
-    
-    # We want to identify the features with the largest positive and negative impact
-    contrib_list = []
+
+    rows = []
     for name, contrib in zip(feature_names, contributions):
-        display_name = name.replace('_', ' ').title()
-        contrib_list.append({
+        rows.append({
             'feature': name,
-            'display_name': display_name,
+            'display_name': name.replace('_', ' ').title(),
             'contribution': float(contrib),
-            'importance': float(abs(contrib))
+            'importance': float(abs(contrib)),
         })
-        
-    # Sort by contribution magnitude
-    contrib_list = sorted(contrib_list, key=lambda x: x['contribution'], reverse=True)
-    
-    # Split into positive churn drivers and negative churn restrainers
-    drivers = [c for c in contrib_list if c['contribution'] > 0][:5]
-    restrainers = [c for c in contrib_list if c['contribution'] <= 0][-5:]
-    # Reverse restrainers so strongest is first in its list
-    restrainers = sorted(restrainers, key=lambda x: x['contribution'])[:5]
-    
+
+    rows = sorted(rows, key=lambda item: item['importance'], reverse=True)
+    return rows[:top_n]
+
+
+def explain_customer(customer_row_dict):
+    assets = load_assets()
+    df_single = pd.DataFrame([customer_row_dict])
+
+    churn_impacts = _explain_with_artifacts(
+        df_single,
+        assets['churn_prep'],
+        assets['churn_coefs'],
+        assets['churn_features'],
+    )
+    crosssell_impacts = _explain_with_artifacts(
+        df_single,
+        assets['cs_prep'],
+        assets['cs_coefs'],
+        assets['cs_features'],
+    )
+
     return {
-        'drivers': drivers,
-        'restrainers': restrainers
+        'churn': churn_impacts,
+        'crosssell': crosssell_impacts,
+        'drivers': [item for item in churn_impacts if item['contribution'] > 0],
+        'restrainers': [item for item in churn_impacts if item['contribution'] <= 0],
     }
