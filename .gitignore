@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+
+.DS_Store
+
+# Dataset
+finance_marketing_01.csv
+
+# Generated outputs
+retention_targets.csv
+cross_sell_targets.csv
+backend/temp_downloads/
+
+.ipynb_checkpoints/
