@@ -1,0 +1,24 @@
+{
+  "selected_churn_model": "XGBoost",
+  "selected_crosssell_model": "Linear SVM",
+  "churn_threshold": 0.19853707414829663,
+  "crosssell_threshold": 0.33797595190380764,
+  "risk_band_edges": [
+    0.0,
+    0.08981510170288617,
+    0.16030726069095041,
+    1.0
+  ],
+  "crosssell_band_edges": [
+    0.0,
+    0.2421023760231799,
+    0.3253979926637398,
+    1.0
+  ],
+  "cost_contact": 5.0,
+  "base_value_saved": 100.0,
+  "clv_multiplier": 0.5,
+  "revenue_per_accept": 200.0,
+  "churn_capacity_pct": 0.25,
+  "cs_capacity_pct": 0.3
+}

@@ -1,0 +1,8 @@
+*.csv
+__pycache__/
+*.pyc
+temp_downloads/
+react_frontend/
+node_modules/
+.env
+.DS_Store

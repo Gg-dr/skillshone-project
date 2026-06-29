@@ -1,0 +1,175 @@
+{
+  "total_customers": 60000,
+  "actual_churn_rate": 0.1627,
+  "actual_crosssell_rate": 0.24503333333333333,
+  "pred_churn_rate": 0.16317291096319966,
+  "pred_crosssell_rate": 0.23062168921596846,
+  "targeted_churn_rate": 0.34467455621301774,
+  "targeted_crosssell_rate": 0.3777549974372117,
+  "config": {
+    "churn_threshold": 0.19853707414829663,
+    "crosssell_threshold": 0.33797595190380764,
+    "churn_capacity_pct": 0.25,
+    "cs_capacity_pct": 0.3,
+    "cost_contact": 5.0,
+    "base_value_saved": 100.0,
+    "revenue_per_accept": 200.0,
+    "selected_churn_model": "XGBoost",
+    "selected_crosssell_model": "Linear SVM"
+  },
+  "financials": {
+    "profit_mode": "backtest",
+    "retention_contacts": 14872,
+    "retention_revenue": 1354469.0,
+    "retention_cost": 74360.0,
+    "retention_net": 1280109.0,
+    "crosssell_contacts": 15608,
+    "crosssell_revenue": 1179200.0,
+    "crosssell_cost": 78040.0,
+    "crosssell_net": 1101160.0,
+    "total_revenue": 2533669.0,
+    "total_cost": 152400.0,
+    "total_net": 2381269.0,
+    "expected_churners_reached": 5096.885954950776,
+    "expected_retention_revenue": 1349325.1099181734,
+    "expected_crosssell_accepts": 6302.053240835358,
+    "expected_crosssell_revenue": 1260410.6481670716
+  },
+  "risk_band_counts": {
+    "Low Risk": 19800,
+    "Medium Risk": 19800,
+    "High Risk": 20400
+  },
+  "crosssell_band_counts": {
+    "Low Probability": 26113,
+    "Medium Probability": 15905,
+    "High Probability": 17982
+  },
+  "clv_segment_counts": {
+    "High": 14978,
+    "Low": 17988,
+    "Medium": 21027,
+    "Premium": 6007
+  },
+  "channel_effectiveness": {
+    "Direct Mail": {
+      "count": 3010,
+      "avg_churn_prob": 0.16441236000579929,
+      "avg_accept_prob": 0.22519410407012175
+    },
+    "Email": {
+      "count": 27286,
+      "avg_churn_prob": 0.16346688350190308,
+      "avg_accept_prob": 0.22903131277417524
+    },
+    "Push Notification": {
+      "count": 11846,
+      "avg_churn_prob": 0.16212514048464205,
+      "avg_accept_prob": 0.236045667049721
+    },
+    "SMS": {
+      "count": 17858,
+      "avg_churn_prob": 0.1632098587053716,
+      "avg_accept_prob": 0.23036855904804016
+    }
+  },
+  "model_performance": {
+    "churn": {
+      "label": "Churn",
+      "model": "XGBoost",
+      "threshold": 0.1985,
+      "contacts": 2247,
+      "precision": 0.336,
+      "recall": 0.515,
+      "f1_score": 0.41,
+      "roc_auc": 0.722,
+      "pr_auc": 0.3718,
+      "profit": 186593
+    },
+    "crosssell": {
+      "label": "Cross-sell",
+      "model": "Linear SVM",
+      "threshold": 0.338,
+      "contacts": 2211,
+      "precision": 0.403,
+      "recall": 0.411,
+      "f1_score": 0.407,
+      "roc_auc": 0.6288,
+      "pr_auc": 0.3906,
+      "profit": 167145
+    }
+  },
+  "model_comparison": {
+    "churn": [
+      {
+        "model": "Logistic Regression",
+        "pr_auc": 0.3718,
+        "roc_auc": 0.722,
+        "precision": 0.332,
+        "recall": 0.511,
+        "threshold": 0.1926,
+        "contacts": 2251,
+        "profit": 185866,
+        "note": "Tuned and calibrated"
+      },
+      {
+        "model": "XGBoost",
+        "pr_auc": 0.371,
+        "roc_auc": 0.7209,
+        "precision": 0.336,
+        "recall": 0.515,
+        "threshold": 0.1985,
+        "contacts": 2247,
+        "profit": 186593,
+        "note": "Selected final churn model"
+      },
+      {
+        "model": "Linear SVM",
+        "pr_auc": 0.37,
+        "roc_auc": 0.7211,
+        "precision": 0.333,
+        "recall": 0.51,
+        "threshold": 0.1946,
+        "contacts": 2240,
+        "profit": 184918,
+        "note": "Tuned and calibrated"
+      }
+    ],
+    "crosssell": [
+      {
+        "model": "Logistic Regression",
+        "pr_auc": 0.3935,
+        "roc_auc": 0.6301,
+        "precision": 0.404,
+        "recall": 0.408,
+        "threshold": 0.3399,
+        "contacts": 2189,
+        "profit": 166055,
+        "note": "Tuned and calibrated"
+      },
+      {
+        "model": "XGBoost",
+        "pr_auc": 0.3931,
+        "roc_auc": 0.6294,
+        "precision": 0.4,
+        "recall": 0.408,
+        "threshold": 0.3399,
+        "contacts": 2209,
+        "profit": 165755,
+        "note": "Tuned, calibrated, and threshold optimized",
+        "f1_score": 0.4
+      },
+      {
+        "model": "Linear SVM",
+        "pr_auc": 0.3906,
+        "roc_auc": 0.6288,
+        "precision": 0.403,
+        "recall": 0.411,
+        "threshold": 0.338,
+        "contacts": 2211,
+        "profit": 167145,
+        "note": "Selected final cross-sell model"
+      }
+    ]
+  }
+}

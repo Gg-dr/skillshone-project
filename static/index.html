@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer Churn & Cross-Sell Prediction</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="page-shell">
+        <header class="app-header">
+            <div class="brand-mark">
+                <div class="brand-icon"><i data-lucide="landmark"></i></div>
+                <div>
+                    <strong>Customer Churn & Cross-Sell</strong>
+                    <span>Retail Banking Decision System</span>
+                </div>
+            </div>
+            <nav class="top-nav">
+                <button class="nav-item active" data-tab="dashboard"><i data-lucide="layout-dashboard"></i> Dashboard</button>
+                <button class="nav-item" data-tab="customers"><i data-lucide="users-round"></i> Customer Browser</button>
+                <button class="nav-item" data-tab="predict"><i data-lucide="scan-line"></i> Single Prediction</button>
+                <button class="nav-item" data-tab="batch"><i data-lucide="file-spreadsheet"></i> Batch Scoring</button>
+            </nav>
+            <div class="model-status"><i data-lucide="shield-check"></i> Models Ready</div>
+        </header>
+
+        <main class="content">
+            <section class="page-intro">
+                <p class="eyebrow" id="page-eyebrow">Executive Dashboard</p>
+                <h1 id="page-title">Customer Churn & Cross-Sell Prediction</h1>
+                <p id="page-subtitle">A business view of customer risk, revenue opportunity, campaign capacity, and live scoring.</p>
+            </section>
+
+            <section class="tab active" id="dashboard-tab">
+                <section class="command-center">
+                    <div class="command-main">
+                        <span>Expected Net Campaign Value</span>
+                        <strong id="net-value">--</strong>
+                        <p>Combined retention and cross-sell value after campaign costs.</p>
+                        <div class="threshold-row">
+                            <div><small>Churn Threshold</small><b id="churn-threshold">--</b></div>
+                            <div><small>Cross-Sell Threshold</small><b id="crosssell-threshold">--</b></div>
+                            <div><small>Contacts</small><b id="total-contacts">--</b></div>
+                        </div>
+                    </div>
+                    <div class="command-side">
+                        <div class="metric-tile teal"><span>Total Customers</span><strong id="total-customers">--</strong></div>
+                        <div class="metric-tile red"><span>Avg Churn Probability</span><strong id="avg-churn">--</strong></div>
+                        <div class="metric-tile indigo"><span>Avg Cross-Sell Probability</span><strong id="avg-crosssell">--</strong></div>
+                        <div class="metric-tile gold"><span>Actual Churn Rate</span><strong id="actual-churn">--</strong></div>
+                    </div>
+                </section>
+
+                <section class="business-grid">
+                    <div class="glass-card">
+                        <div class="card-head"><i data-lucide="wallet-cards"></i><h2>Campaign Economics</h2></div>
+                        <div class="economics-grid">
+                            <div><span>Total Revenue</span><b id="total-revenue">--</b></div>
+                            <div><span>Total Cost</span><b id="total-cost">--</b></div>
+                            <div><span>Retention Net</span><b id="retention-net">--</b></div>
+                            <div><span>Cross-Sell Net</span><b id="crosssell-net">--</b></div>
+                        </div>
+                    </div>
+                    <div class="glass-card">
+                        <div class="card-head"><i data-lucide="target"></i><h2>Campaign Capacity</h2></div>
+                        <div class="capacity-grid">
+                            <div class="capacity-ring retention-ring" id="retention-ring"><b id="retention-contact-share">--</b><span>Retention</span></div>
+                            <div class="capacity-ring crosssell-ring" id="crosssell-ring"><b id="crosssell-contact-share">--</b><span>Cross-Sell</span></div>
+                            <div class="capacity-copy">
+                                <div><span>Retention Contacts</span><b id="retention-contacts">--</b></div>
+                                <div><span>Cross-Sell Contacts</span><b id="crosssell-contacts">--</b></div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="business-grid">
+                    <div class="glass-card">
+                        <div class="card-head"><i data-lucide="activity"></i><h2>Model Quality</h2></div>
+                        <div class="quality-grid">
+                            <div class="quality-block red">
+                                <h3>Churn</h3>
+                                <div><span>Precision</span><b id="churn-precision">--</b></div>
+                                <div><span>Recall</span><b id="churn-recall">--</b></div>
+                                <div><span>PR-AUC</span><b id="churn-pr">--</b></div>
+                                <div><span>ROC-AUC</span><b id="churn-roc">--</b></div>
+                            </div>
+                            <div class="quality-block teal">
+                                <h3>Cross-Sell</h3>
+                                <div><span>Precision</span><b id="cs-precision">--</b></div>
+                                <div><span>Recall</span><b id="cs-recall">--</b></div>
+                                <div><span>PR-AUC</span><b id="cs-pr">--</b></div>
+                                <div><span>ROC-AUC</span><b id="cs-roc">--</b></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="glass-card">
+                        <div class="card-head"><i data-lucide="git-compare-arrows"></i><h2>Actual vs Model View</h2></div>
+                        <div class="comparison-list">
+                            <div><span>Actual Churn</span><b id="actual-churn-detail">--</b></div>
+                            <div><span>Predicted Churn Avg</span><b id="pred-churn-detail">--</b></div>
+                            <div><span>Actual Cross-Sell</span><b id="actual-crosssell">--</b></div>
+                            <div><span>Predicted Cross-Sell Avg</span><b id="pred-crosssell-detail">--</b></div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="glass-card">
+                    <div class="card-head"><i data-lucide="bar-chart-3"></i><h2>Final Deployed Model Results</h2></div>
+                    <div class="model-comparison">
+                        <div class="model-card-result churn">
+                            <div class="model-card-head">
+                                <span>Churn Model</span>
+                                <strong id="churn-profit">--</strong>
+                            </div>
+                            <div class="model-result-grid">
+                                <div><span>Threshold</span><b id="churn-threshold-detail">--</b></div>
+                                <div><span>Contacts</span><b id="churn-contacts">--</b></div>
+                                <div><span>Precision</span><b id="churn-precision-detail">--</b></div>
+                                <div><span>Recall</span><b id="churn-recall-detail">--</b></div>
+                            </div>
+                            <div id="churn-metric-bars" class="metric-bars"></div>
+                        </div>
+                        <div class="model-card-result crosssell">
+                            <div class="model-card-head">
+                                <span>Cross-Sell Model</span>
+                                <strong id="cs-profit">--</strong>
+                            </div>
+                            <div class="model-result-grid">
+                                <div><span>Threshold</span><b id="cs-threshold-detail">--</b></div>
+                                <div><span>Contacts</span><b id="cs-contacts">--</b></div>
+                                <div><span>Precision</span><b id="cs-precision-detail">--</b></div>
+                                <div><span>Recall</span><b id="cs-recall-detail">--</b></div>
+                            </div>
+                            <div id="cs-metric-bars" class="metric-bars"></div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="business-grid wide-left">
+                    <div class="glass-card">
+                        <div class="card-head"><i data-lucide="line-chart"></i><h2>Training Model Comparison</h2></div>
+                        <div class="model-tabs">
+                            <button class="model-tab active" data-model-view="churn">Churn Models</button>
+                            <button class="model-tab" data-model-view="crosssell">Cross-Sell Models</button>
+                        </div>
+                        <div id="model-comparison-chart" class="comparison-chart"></div>
+                    </div>
+                    <div class="glass-card">
+                        <div class="card-head"><i data-lucide="list-filter"></i><h2>Important Feature Signals</h2></div>
+                        <div class="feature-switch">
+                            <button class="feature-tab active" data-feature-view="churn">Churn</button>
+                            <button class="feature-tab" data-feature-view="crosssell">Cross-Sell</button>
+                        </div>
+                        <div id="feature-importance-list" class="feature-list"></div>
+                    </div>
+                </section>
+
+                <section class="analytics-board">
+                    <div class="glass-card chart-card">
+                        <div class="card-head"><i data-lucide="triangle-alert"></i><h2>Churn Risk Distribution</h2></div>
+                        <div id="churn-chart" class="bar-list"></div>
+                    </div>
+                    <div class="glass-card chart-card">
+                        <div class="card-head"><i data-lucide="badge-percent"></i><h2>Cross-Sell Probability Distribution</h2></div>
+                        <div id="crosssell-chart" class="bar-list"></div>
+                    </div>
+                    <div class="glass-card chart-card">
+                        <div class="card-head"><i data-lucide="gem"></i><h2>Customer Value Segments</h2></div>
+                        <div id="clv-chart" class="bar-list compact"></div>
+                    </div>
+                </section>
+
+                <section class="business-grid">
+                    <div class="glass-card">
+                        <div class="card-head"><i data-lucide="radio-tower"></i><h2>Channel Effectiveness</h2></div>
+                        <div id="channel-list" class="leader-list"></div>
+                    </div>
+                    <div class="glass-card">
+                        <div class="card-head"><i data-lucide="clipboard-check"></i><h2>Business Rules</h2></div>
+                        <div class="rule-list">
+                            <div><b>Retention priority</b><span>High churn-risk customers are handled before cross-sell offers.</span></div>
+                            <div><b>Fixed thresholds</b><span>Saved thresholds from validation are used for deployment scoring.</span></div>
+                            <div><b>Aggregate dashboard</b><span>Dashboard metrics use saved project summary values, not raw customer records.</span></div>
+                        </div>
+                    </div>
+                </section>
+            </section>
+
+            <section class="tab" id="predict-tab">
+                <div class="prediction-workspace">
+                    <form class="glass-card form-card" id="predict-form">
+                        <div class="card-head"><i data-lucide="sliders-horizontal"></i><h2>Customer Input</h2></div>
+                        <div class="form-grid">
+                            <label>Age<input type="number" name="age" value="45" min="18" max="100"></label>
+                            <label>Gender<select name="gender"><option>Male</option><option>Female</option></select></label>
+                            <label>Marital Status<select name="marital_status"><option>Married</option><option>Single</option><option>Divorced</option><option>Widowed</option></select></label>
+                            <label>Education<select name="education_level"><option>Bachelor</option><option>High School</option><option>Master</option><option>PhD</option></select></label>
+                            <label>Occupation<select name="occupation"><option>Salaried</option><option>Business Owner</option><option>Self-Employed</option><option>Student</option><option>Retired</option><option>Unemployed</option></select></label>
+                            <label>City Tier<select name="city_tier"><option>Tier 1</option><option>Tier 2</option><option>Tier 3</option></select></label>
+                            <label>Region<select name="region"><option>North</option><option>South</option><option>East</option><option>West</option><option>Central</option></select></label>
+                            <label>Annual Income<input type="number" name="annual_income" value="65000"></label>
+                            <label>Account Type<select name="account_type"><option>Savings</option><option>Basic</option><option>Current</option><option>Premium</option></select></label>
+                            <label>Tenure Months<input type="number" name="tenure_months" value="36" min="0"></label>
+                            <label>Credit Score<input type="number" name="credit_score" value="700" min="300" max="850"></label>
+                            <label>Account Balance<input type="number" name="account_balance" value="15000"></label>
+                            <label>Products Held<input type="number" name="num_products_held" id="num-products-held" value="2" min="1" max="6" readonly></label>
+                            <label>Monthly Transactions<input type="number" name="avg_monthly_transactions" value="25"></label>
+                            <label>Avg Transaction Value<input type="number" name="avg_transaction_value" value="85"></label>
+                            <label>Digital Usage %<input type="number" name="digital_channel_usage_pct" value="60" min="0" max="100"></label>
+                            <label>ATM Withdrawals<input type="number" name="atm_withdrawals_monthly" value="4"></label>
+                            <label>International Txns<input type="number" name="international_txn_monthly" value="1"></label>
+                            <label>Missed Payments<input type="number" name="missed_payments_6m" value="0" min="0"></label>
+                            <label>Branch Visits<input type="number" name="branch_visits_monthly" value="2"></label>
+                            <label>Service Calls<input type="number" name="customer_service_calls_6m" value="1" min="0"></label>
+                            <label>Complaint<select name="complaint_raised"><option value="0">No</option><option value="1">Yes</option></select></label>
+                            <label>NPS Score<input type="number" name="nps_score" value="8" min="0" max="10" step="0.1"></label>
+                            <label>Campaigns Sent<input type="number" name="campaigns_sent_12m" value="6" min="0"></label>
+                            <label>Campaigns Opened<input type="number" name="campaigns_opened_12m" value="4" min="0"></label>
+                            <label>Campaigns Clicked<input type="number" name="campaigns_clicked_12m" value="2" min="0"></label>
+                            <label>Click-through Rate<input type="number" name="click_through_rate" value="0.33" min="0" max="1" step="0.01"></label>
+                            <label>Preferred Channel<select name="preferred_campaign_channel"><option>Email</option><option>SMS</option><option>Push Notification</option><option>Direct Mail</option></select></label>
+                            <label>Last Campaign<select name="last_campaign_type"><option>Retention</option><option>Cross-sell</option><option>Awareness</option><option>Reactivation</option><option>Upgrade</option></select></label>
+                            <label>Days Since Campaign<input type="number" name="days_since_last_campaign" value="14" min="1"></label>
+                            <label>Campaign Offer<select name="campaign_offer_category"><option>No Active Offer</option><option>Credit Card</option><option>Personal Loan</option><option>Investment Fund</option><option>Insurance</option><option>Savings Plan</option><option>Premium Upgrade</option></select></label>
+                            <label>CLV Score<input type="number" name="clv_score" value="500" min="0" max="1000"></label>
+                        </div>
+                        <div class="checkbox-grid">
+                            <label><input type="checkbox" name="has_credit_card" checked> Credit Card</label>
+                            <label><input type="checkbox" name="has_personal_loan"> Personal Loan</label>
+                            <label><input type="checkbox" name="has_home_loan"> Home Loan</label>
+                            <label><input type="checkbox" name="has_investment_account"> Investment</label>
+                            <label><input type="checkbox" name="has_insurance_product"> Insurance</label>
+                        </div>
+                        <button class="primary-btn" type="submit"><i data-lucide="sparkles"></i> Run Prediction</button>
+                    </form>
+
+                    <aside class="result-dock">
+                        <div class="decision-panel">
+                            <span>Recommended Action</span>
+                            <strong id="decision-action">--</strong>
+                            <p id="decision-text">Run prediction to view the recommended action.</p>
+                        </div>
+                        <div class="result-cards">
+                            <div><span>Churn Probability</span><strong id="churn-result">--</strong><b id="risk-band">--</b></div>
+                            <div><span>Cross-Sell Probability</span><strong id="crosssell-result">--</strong><b id="offer-flag">--</b></div>
+                        </div>
+                        <div class="factor-panel">
+                            <h3>Churn Factors</h3>
+                            <div id="churn-factors" class="factor-list"></div>
+                        </div>
+                        <div class="factor-panel">
+                            <h3>Cross-Sell Factors</h3>
+                            <div id="crosssell-factors" class="factor-list"></div>
+                        </div>
+                    </aside>
+                </div>
+            </section>
+
+            <section class="tab" id="customers-tab">
+                <div class="customer-browser">
+                    <aside class="customer-sidebar glass-card">
+                        <div class="card-head"><i data-lucide="list-checks"></i><h2>Customer Lists</h2></div>
+                        <div class="browser-controls">
+                            <div class="model-tabs">
+                                <button class="browser-tab active" data-customer-list="retention">Retention</button>
+                                <button class="browser-tab" data-customer-list="crosssell">Cross-Sell</button>
+                            </div>
+                            <input type="search" id="customer-search" placeholder="Search customer ID">
+                        </div>
+                        <div class="browser-summary">
+                            <span id="browser-list-label">Top churn customers</span>
+                            <strong id="browser-list-count">--</strong>
+                        </div>
+                        <div id="customer-list" class="customer-list"></div>
+                    </aside>
+
+                    <section class="customer-detail glass-card">
+                        <div class="customer-detail-head">
+                            <div>
+                                <p class="eyebrow" id="selected-action">Customer Detail</p>
+                                <h2 id="selected-customer-id">Select a customer</h2>
+                                <p id="selected-customer-desc">Choose a customer from the sidebar to view profile, model scores, and recommended action.</p>
+                            </div>
+                            <span id="selected-badge" class="status-badge">Waiting</span>
+                        </div>
+
+                        <div class="selected-score-grid">
+                            <div class="score-card risk">
+                                <span>Churn Probability</span>
+                                <strong id="selected-churn-prob">--</strong>
+                                <b id="selected-risk-band">--</b>
+                            </div>
+                            <div class="score-card offer">
+                                <span>Cross-Sell Probability</span>
+                                <strong id="selected-crosssell-prob">--</strong>
+                                <b id="selected-crosssell-band">--</b>
+                            </div>
+                            <div class="score-card">
+                                <span>CLV Segment</span>
+                                <strong id="selected-clv">--</strong>
+                                <b id="selected-clv-score">--</b>
+                            </div>
+                        </div>
+
+                        <div class="customer-profile-grid">
+                            <div class="profile-panel">
+                                <h3>Profile</h3>
+                                <div id="selected-profile" class="profile-list"></div>
+                            </div>
+                            <div class="profile-panel">
+                                <h3>Banking Activity</h3>
+                                <div id="selected-activity" class="profile-list"></div>
+                            </div>
+                            <div class="profile-panel">
+                                <h3>Campaign Context</h3>
+                                <div id="selected-campaign" class="profile-list"></div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </section>
+
+            <section class="tab" id="batch-tab">
+                <div class="batch-workspace">
+                    <div class="batch-hero">
+                        <div>
+                            <p class="eyebrow">Batch Workspace</p>
+                            <h2>Score customer CSV files</h2>
+                            <p>Upload new customer records, score both models, preview outcomes, and download campaign-ready output.</p>
+                        </div>
+                        <a href="/sample_input.csv" download>Download sample CSV</a>
+                    </div>
+                    <div class="batch-grid">
+                        <div class="glass-card upload-card">
+                            <div class="card-head"><i data-lucide="file-up"></i><h2>Upload File</h2></div>
+                            <input type="file" id="csv-file" accept=".csv">
+                            <button class="primary-btn" id="score-file"><i data-lucide="play"></i> Run Batch Scoring</button>
+                        </div>
+                        <div class="glass-card" id="batch-results">
+                            <div class="card-head"><i data-lucide="table-properties"></i><h2>Batch Results</h2></div>
+                            <p class="muted">No file scored yet.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
